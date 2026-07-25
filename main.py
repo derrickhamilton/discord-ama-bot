@@ -9,6 +9,7 @@ from discord.ext import commands
 import logging
 from dotenv import load_dotenv
 import os
+from questionSubmissionForm import LaunchQuestionSubmissionFormView
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -41,21 +42,24 @@ async def on_message(message):
 
 # Command: !ama
 # Upon usage, user will receive a question from the bot
-@bot.command()
+@bot.command(name="ama")
 async def ama(ctx):
     await ctx.send(f"{ctx.author.mention} - Is Rascal a bratto or a catto?")
 
-# Command: !submit
-# Upon usage in DM with AMA-bot, will save the question
-# If used in a server, will prompt the user to send a DM to the bot
-@bot.command()
-async def submit(ctx, *, msg):
-    if ctx.guild is None:
-        print(f"Received command from {ctx.author}: {msg}")
-        await ctx.author.send("Thank you for submitting your question. I will remember to ask this in the future!")
-        return
+# Command: !submit-question
+# Sends a message containing a button to launch the QuestionSubmissionForm modal 
+# using the LaunchQuestionSubmissionFormView class
+@bot.command(name="submit-question")
+@commands.has_permissions(administrator=True)
+async def submit(ctx):
+    # Create an embed to hold a brief instruction message with the submission form launcher
+    question_embed = discord.Embed(
+        title="Submit a question to AMA-bot! ❓",
+        description="To submit your question, click the button below to fill out the question submission form.",
+        color=discord.Color.blue()
+    )
 
-    await ctx.send(f"{ctx.author.mention} - Thank you for showing interest in submitting a question to be asked. \
-                   Send me a DM using !submit followed by your message content so I can save it secretly! 🤫")
+    await ctx.send(embed=question_embed, view=LaunchQuestionSubmissionFormView())
+    
 
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)
