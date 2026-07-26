@@ -6,8 +6,26 @@
 #-----------------------------------------------------------------
 
 import discord
+import json
+from datetime import date
 
 questionFormTitleString = "Submit a question!"
+ 
+def handleQuestionSubmission(authorString, questionContentString):
+    questionsData = {}
+
+    # Define a dictionary structure using the questions.json file created by AMA-bot
+    with open("questions.json", "r") as questionsFile:
+        questionsData = json.load(questionsFile)
+
+    # Get today's date in yyyy-mm-dd format
+    today = date.today().isoformat()
+
+    newQuestionData = {"author": authorString, "dateSubmitted": today, "questionContent": questionContentString}
+    questionsData["questions"].append(newQuestionData)
+
+    with open("questions.json", "w") as newQuestionsFile:
+        json.dump(questionsData, newQuestionsFile, indent=4)
 
 class QuestionSubmissionForm(discord.ui.Modal, title=questionFormTitleString):
 
@@ -18,6 +36,11 @@ class QuestionSubmissionForm(discord.ui.Modal, title=questionFormTitleString):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        # Need to handle the text submitted through the form
+        print(f"Submission from user {interaction.user.display_name}: {self.msg_content.value}")
+
+        handleQuestionSubmission(interaction.user.display_name, self.msg_content.value)
+
         await interaction.response.send_message(f"{interaction.user.mention} - Thank you for submitting a question!")
 
 class LaunchQuestionSubmissionFormView(discord.ui.View):
