@@ -21,10 +21,10 @@ def handleQuestionSubmission(authorString, questionContentString, serverNameStri
     # Get today's date in yyyy-mm-dd format
     today = date.today().isoformat()
 
-    i = 0;
+    i = 0
     for server in questionsData.get("servers"):
         serverNameValue = server.get("server-name", "Unknown")
-        print("Compare to value: " + serverNameString + " retrieved value: " + serverNameValue)
+        print(f"Compare to value: {serverNameString} retrieved value:{serverNameValue}")
         if serverNameString == serverNameValue:
             print("Found server! Name: " + serverNameString)
             newQuestionData = {"author": authorString, "dateSubmitted": today, "questionContent": questionContentString, "asked": False}

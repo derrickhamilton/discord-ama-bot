@@ -10,6 +10,7 @@ import logging
 from dotenv import load_dotenv
 import os
 from questionSubmissionForm import LaunchQuestionSubmissionFormView
+from retrieveQuestion import retrieveQuestionFromJson
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -24,6 +25,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.event
 async def on_ready():
+    assert bot.user is not None
     print(f"Hello, I am {bot.user.name}. I am ready to ask you anything!")
 
 @bot.event
@@ -31,11 +33,9 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # Intending to receive AMA questions through DMs to AMA-bot
-    # !submit command must be used to 'hopefully' mitigate junk messages
     if message.guild is None:
         print(f"Received DM from {message.author}: {message.content}")
-        await message.author.send("I am but a mere robot. I respectfully ask that you only utilize the !submit command here")
+        await message.author.send("I am but a mere robot. I respectfully ask that you only submit questions by utilizing the submit-question command in a server")
 
     # Needed to ensure bot can still process commands
     await bot.process_commands(message)
@@ -44,7 +44,9 @@ async def on_message(message):
 # Upon usage, user will receive a question from the bot
 @bot.command(name="ama")
 async def ama(ctx):
-    await ctx.send(f"{ctx.author.mention} - Is Rascal a bratto or a catto?")
+    print(f"Request from author: {ctx.author} on server: {ctx.guild.name} to retrieve question")
+    questionStr = retrieveQuestionFromJson(ctx.guild.name)
+    await ctx.send(f"{ctx.author.mention} - {questionStr}")
 
 # Command: !submit-question
 # Sends a message containing a button to launch the QuestionSubmissionForm modal 
