@@ -10,7 +10,7 @@ import logging
 from dotenv import load_dotenv
 import os
 from questionSubmissionForm import LaunchQuestionSubmissionFormView
-from retrieveQuestion import retrieveQuestionFromJson
+from handleQuestionData import retrieveQuestionFromJson
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -46,7 +46,11 @@ async def on_message(message):
 async def ama(ctx):
     print(f"Request from author: {ctx.author} on server: {ctx.guild.name} to retrieve question")
     questionStr = retrieveQuestionFromJson(ctx.guild.name)
-    await ctx.send(f"{ctx.author.mention} - {questionStr}")
+
+    if not questionStr:
+        await ctx.send("No question found! Consider submitting a question using the ama command.")
+    else:
+        await ctx.send(f"{ctx.author.mention} - {questionStr}")
 
 # Command: !submit-question
 # Sends a message containing a button to launch the QuestionSubmissionForm modal 
@@ -63,5 +67,5 @@ async def submit(ctx):
 
     await ctx.send(embed=question_embed, view=LaunchQuestionSubmissionFormView())
     
-
+assert token is not None
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)
