@@ -20,6 +20,7 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -27,6 +28,23 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 async def on_ready():
     assert bot.user is not None
     print(f"Hello, I am {bot.user.name}. I am ready to ask you anything!")
+
+@bot.event
+async def on_guild_join(guild):
+    print(f"Joined new server: {guild.name}")
+
+    # Find first chat channel where bot has permission to send a message
+    for channel in guild.text_channels:
+        if channel.permissions_for(guild.me).send_messages:
+            welcomeEmbed = discord.Embed(
+                title="AMA-Bot greets you! 👋",
+                description=f"Hello, {guild.name}, I am AMA-bot, here to handle all things inquisitive.",
+                color=discord.Color.blue()
+            )
+
+            await channel.send(embed=welcomeEmbed)
+
+            break;
 
 @bot.event
 async def on_message(message):
