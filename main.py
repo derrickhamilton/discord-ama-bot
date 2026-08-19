@@ -10,7 +10,7 @@ import logging
 from dotenv import load_dotenv
 import os
 from questionSubmissionForm import LaunchQuestionSubmissionFormView
-from handleQuestionData import retrieveQuestionFromJson
+from handleQuestionData import retrieveQuestionFromJson, submitNewServerToJson
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -32,6 +32,9 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     print(f"Joined new server: {guild.name}")
+
+    # Submit new server to stored server data
+    submitNewServerToJson(guild.name)
 
     # Find first chat channel where bot has permission to send a message
     for channel in guild.text_channels:
