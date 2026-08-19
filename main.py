@@ -66,7 +66,7 @@ async def ama(ctx):
     questionStr = retrieveQuestionFromJson(ctx.guild.name)
 
     if not questionStr:
-        await ctx.send("No question found! Consider submitting a question using the ama command.")
+        await ctx.send(f"{ctx.author.mention} - No question found! Consider submitting a question using the ama command.")
     else:
         await ctx.send(f"{ctx.author.mention} - {questionStr}")
 

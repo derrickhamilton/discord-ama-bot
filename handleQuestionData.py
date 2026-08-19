@@ -4,7 +4,6 @@
 # Purpose: Defines methods to handle data from questions.json
 #-----------------------------------------------------------------
 
-import random
 import json
 from datetime import date
 
@@ -23,7 +22,7 @@ def submitNewQuestionToJson(authorString, questionContentString, serverNameStrin
         print(f"Compare to value: {serverNameString} retrieved value:{serverNameValue}")
         if serverNameString == serverNameValue:
             print("Found server! Name: " + serverNameString)
-            newQuestionData = {"author": authorString, "dateSubmitted": today, "questionContent": questionContentString, "asked": False}
+            newQuestionData = {"author": authorString, "dateSubmitted": today, "questionContent": questionContentString}
             questionsData["servers"][index]["questions"].append(newQuestionData)
             break;
 
@@ -41,9 +40,18 @@ def retrieveQuestionFromJson(serverNameString):
     for index, server in enumerate(questionsData.get("servers")):
         serverNameValue = server.get("server-name", "Unknown")
         if serverNameString == serverNameValue:
-            questionsArrayLength = len(questionsData["servers"][index]["questions"])
-            randomQuestionInt = random.randint(0, questionsArrayLength-1)
-            questionReturnStr = questionsData["servers"][index]["questions"][randomQuestionInt]["questionContent"]
+
+            # If questions list is empty, simply return to avoid list pop error
+            if len(questionsData["servers"][index]["questions"]) == 0:
+                return questionReturnStr
+
+            # Grab the first question from the questions list then append it to the askedQuestions list
+            selectedQuestionData = questionsData["servers"][index]["questions"].pop(0)
+            questionReturnStr = selectedQuestionData["questionContent"]
+            questionsData["servers"][index]["askedQuestions"].append(selectedQuestionData)
+
+    with open("questions.json", "w") as newQuestionsFile:
+        json.dump(questionsData, newQuestionsFile, indent=4)
 
 
     return questionReturnStr
