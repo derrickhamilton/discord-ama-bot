@@ -50,29 +50,28 @@ def submitNewQuestionToJson(authorString, questionContentString, serverNameStrin
     with open("questions.json", "w") as newQuestionsFile:
         json.dump(questionsData, newQuestionsFile, indent=4)
 
-def retrieveQuestionFromJson(serverNameString):
-    questionsData = {}
-    questionReturnStr = ""
+def retrieveQuestionDataFromJson(serverNameString):
+    allQuestionsData = {}
+    questionReturn = {}
 
     # Define a dictionary structure using the questions.json file created by AMA-bot
     with open("questions.json", "r") as questionsFile:
-        questionsData = json.load(questionsFile)
+        allQuestionsData = json.load(questionsFile)
 
-    for index, server in enumerate(questionsData.get("servers")):
+    for index, server in enumerate(allQuestionsData.get("servers")):
         serverNameValue = server.get("serverName", "Unknown")
         if serverNameString == serverNameValue:
 
             # If questions list is empty, simply return to avoid list pop error
-            if len(questionsData["servers"][index]["questions"]) == 0:
-                return questionReturnStr
+            if len(allQuestionsData["servers"][index]["questions"]) == 0:
+                return questionReturn
 
             # Grab the first question from the questions list then append it to the askedQuestions list
-            selectedQuestionData = questionsData["servers"][index]["questions"].pop(0)
-            questionReturnStr = selectedQuestionData["questionContent"]
-            questionsData["servers"][index]["askedQuestions"].append(selectedQuestionData)
+            questionReturn = allQuestionsData["servers"][index]["questions"].pop(0)
+            allQuestionsData["servers"][index]["askedQuestions"].append(questionReturn)
 
     with open("questions.json", "w") as newQuestionsFile:
-        json.dump(questionsData, newQuestionsFile, indent=4)
+        json.dump(allQuestionsData, newQuestionsFile, indent=4)
 
 
-    return questionReturnStr
+    return questionReturn

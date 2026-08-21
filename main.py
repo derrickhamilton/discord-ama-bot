@@ -8,9 +8,11 @@ import discord
 from discord.ext import commands
 import logging
 from dotenv import load_dotenv
+from gtts import gTTS
 import os
+import asyncio
 from questionSubmissionForm import LaunchQuestionSubmissionFormView
-from handleQuestionData import retrieveQuestionFromJson, submitNewServerToJson
+from handleQuestionData import retrieveQuestionDataFromJson, submitNewServerToJson
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -20,6 +22,7 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.voice_states = True
 intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -66,12 +69,55 @@ async def on_message(message):
 @bot.command(name="ama")
 async def ama(ctx):
     print(f"Request from author: {ctx.author} on server: {ctx.guild.name} to retrieve question")
-    questionStr = retrieveQuestionFromJson(ctx.guild.name)
+    question = retrieveQuestionDataFromJson(ctx.guild.name)
 
-    if not questionStr:
-        await ctx.send(f"{ctx.author.mention} - No question found! Consider submitting a question using the ama command.")
+    if not question:
+        await ctx.send(f"{ctx.author.mention} - No question found! Consider submitting a question using the submit-question command.")
     else:
-        await ctx.send(f"{ctx.author.mention} - {questionStr}")
+        await ctx.send(f"{ctx.author.mention} - {question["questionContent"]}")
+
+# Command: !ama-voice
+# Upon usage, AMA-bot will attempt to join the voice channel the user requesting is joined
+# to use TTS to ask a question
+# Will not do anything if the user is not currently in a voice channel
+@bot.command(name="ama-voice")
+async def amaVoice(ctx):
+    # Need the user to be joined to a voice channel
+    if not ctx.author.voice:
+        await ctx.send(f"{ctx.author.mention} - Please join a voice channel to use the TTS version of this command.")
+        return
+
+    # Attempt to retrieve a question from the json data
+    question = retrieveQuestionDataFromJson(ctx.guild.name)
+
+    if not question:
+        await ctx.send(f"{ctx.author.mention} - No question found! Consider submitting a question using the submit-question command.")
+    else:
+        # Found a question to ask, now create the TTS to send to voice channel
+        voiceChannel = ctx.author.voice.channel
+
+        # Create the questionStr to be converted to audio saying who submitted it and the question content
+        questionStr = f"{question["author"]} asked - {question["questionContent"]}"
+
+        # Convert questionStr to an MP3 file using gTTS
+        ttsAudio = gTTS(text=questionStr, lang="en")
+        filename = "tts_question_audio.mp3"
+        ttsAudio.save(filename)
+
+        # Join voice channel
+        vc = await voiceChannel.connect()
+
+        # Play audio using ffmpeg
+        vc.play(discord.FFmpegPCMAudio(source=filename))
+
+        # Wait for audio clip to finish
+        while vc.is_playing():
+            await asyncio.sleep(1)
+
+        # Disconnect and cleanup
+        await vc.disconnect()
+        if os.path.exists(filename):
+            os.remove(filename)
 
 # Command: !submit-question
 # Sends a message containing a button to launch the QuestionSubmissionForm modal 
