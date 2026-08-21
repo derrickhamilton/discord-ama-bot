@@ -65,65 +65,52 @@ async def on_message(message):
     await bot.process_commands(message)
 
 # Command: !ama
-# Upon usage, user will receive a question from the bot
-@bot.command(name="ama")
-async def ama(ctx):
-    print(f"Request from author: {ctx.author} on server: {ctx.guild.name} to retrieve question")
-    question = retrieveQuestionDataFromJson(ctx.guild.name)
-
-    if not question:
-        await ctx.send(f"{ctx.author.mention} - No question found! Consider submitting a question using the submit-question command.")
-    else:
-        await ctx.send(f"{ctx.author.mention} - {question["questionContent"]}")
-
-# Command: !ama-voice
 # Upon usage, AMA-bot will attempt to join the voice channel the user requesting is joined
 # to use TTS to ask a question
 # Will not do anything if the user is not currently in a voice channel
-@bot.command(name="ama-voice")
-async def amaVoice(ctx):
-    # Need the user to be joined to a voice channel
-    if not ctx.author.voice:
-        await ctx.send(f"{ctx.author.mention} - Please join a voice channel to use the TTS version of this command.")
-        return
-
+@bot.command(name="ama")
+async def ama(ctx):
     # Attempt to retrieve a question from the json data
     question = retrieveQuestionDataFromJson(ctx.guild.name)
 
     if not question:
         await ctx.send(f"{ctx.author.mention} - No question found! Consider submitting a question using the submit-question command.")
     else:
-        # Found a question to ask, now create the TTS to send to voice channel
-        voiceChannel = ctx.author.voice.channel
+        if not ctx.author.voice:
+            await ctx.send(f"{ctx.author.mention} - {question["questionContent"]}")
+        else:
+            voiceChannel = ctx.author.voice.channel
 
-        # Create the questionStr to be converted to audio saying who submitted it and the question content
-        questionStr = f"{question["author"]} asked - {question["questionContent"]}"
+            # Create the questionStr to be converted to audio saying who submitted it and the question content
+            questionStr = f"{question["author"]} asked - {question["questionContent"]}"
 
-        # Convert questionStr to an MP3 file using gTTS
-        ttsAudio = gTTS(text=questionStr, lang="en")
-        filename = "tts_question_audio.mp3"
-        ttsAudio.save(filename)
+            # Convert questionStr to an MP3 file using gTTS
+            ttsAudio = gTTS(text=questionStr, lang="en")
+            filename = "tts_question_audio.mp3"
+            ttsAudio.save(filename)
 
-        # Join voice channel
-        vc = await voiceChannel.connect()
+            # Join voice channel
+            vc = await voiceChannel.connect()
 
-        # Play audio using ffmpeg
-        vc.play(discord.FFmpegPCMAudio(source=filename))
+            # Play audio using ffmpeg
+            vc.play(discord.FFmpegPCMAudio(source=filename))
 
-        # Wait for audio clip to finish
-        while vc.is_playing():
-            await asyncio.sleep(1)
+            # Wait for audio clip to finish
+            while vc.is_playing():
+                await asyncio.sleep(1)
 
-        # Disconnect and cleanup
-        await vc.disconnect()
-        if os.path.exists(filename):
-            os.remove(filename)
+            # Disconnect and cleanup
+            await vc.disconnect()
+            if os.path.exists(filename):
+                os.remove(filename)
+
+            # Still output question to text channel after disconnecting from voice
+            await ctx.send(f"{ctx.author.mention} - {question["questionContent"]}")
 
 # Command: !submit-question
 # Sends a message containing a button to launch the QuestionSubmissionForm modal 
 # using the LaunchQuestionSubmissionFormView class
 @bot.command(name="submit-question")
-@commands.has_permissions(administrator=True)
 async def submit(ctx):
     # Create an embed to hold a brief instruction message with the submission form launcher
     question_embed = discord.Embed(
