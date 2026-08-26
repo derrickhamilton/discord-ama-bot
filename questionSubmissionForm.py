@@ -29,9 +29,14 @@ class QuestionSubmissionForm(discord.ui.Modal, title=questionFormTitleString):
 
 class LaunchQuestionSubmissionFormView(discord.ui.View):
 
-    def __init__(self, *, timeout = 180):
-        super().__init__(timeout=timeout)
+    def __init__(self):
+        super().__init__(timeout=None)
 
-    @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary, custom_id="open_form_button")
+    @discord.ui.button(
+            label="Submit",
+            style=discord.ButtonStyle.primary,
+            custom_id="open_question_form_button"
+    )
+    
     async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(QuestionSubmissionForm())

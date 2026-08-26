@@ -15,22 +15,26 @@ from questionSubmissionForm import LaunchQuestionSubmissionFormView
 from handleQuestionData import retrieveQuestionDataFromJson, submitNewServerToJson
 
 load_dotenv()
-token = os.getenv('DISCORD_TOKEN')
 
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-intents.voice_states = True
-intents.guilds = True
+class AmaBot(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        intents.members         = True
+        intents.voice_states    = True
+        intents.guilds          = True
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+        super().__init__(command_prefix='!', intents=intents)
 
-@bot.event
-async def on_ready():
-    assert bot.user is not None
-    print(f"Hello, I am {bot.user.name}. I am ready to ask you anything!")
+    async def on_ready(self):
+        print(f"Hello, I am {self.user.name}. I am ready to ask you anything!")
+
+        # Persist the question submission form button between bot restarts
+        self.add_view(LaunchQuestionSubmissionFormView())
+
+bot = AmaBot()
 
 @bot.event
 async def on_guild_join(guild):
@@ -119,7 +123,14 @@ async def submit(ctx):
         color=discord.Color.blue()
     )
 
-    await ctx.send(embed=question_embed, view=LaunchQuestionSubmissionFormView())
+    questionFormMessage = await ctx.send(embed=question_embed, view=LaunchQuestionSubmissionFormView())
+
+    await questionFormMessage.pin()
     
-assert token is not None
-bot.run(token, log_handler=handler, log_level=logging.DEBUG)
+if __name__ == "__main__":
+    token = os.getenv('DISCORD_TOKEN')
+    if not token:
+        raise ValueError("DISCORD_TOKEN is missing from the environment variables!")
+
+    # Run the bot
+    bot.run(token, log_handler=handler, log_level=logging.DEBUG)
