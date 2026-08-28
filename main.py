@@ -11,8 +11,9 @@ from dotenv import load_dotenv
 from gtts import gTTS
 import os
 import asyncio
+import sqlite3
 from questionSubmissionForm import LaunchQuestionSubmissionFormView
-from handleQuestionData import retrieveQuestionDataFromJson, submitNewServerToJson
+from handleQuestionData import initializeDb, retrieveQuestionDataFromJson, submitNewServerToDb
 
 load_dotenv()
 
@@ -31,6 +32,8 @@ class AmaBot(commands.Bot):
     async def on_ready(self):
         print(f"Hello, I am {self.user.name}. I am ready to ask you anything!")
 
+        await initializeDb()
+
         # Persist the question submission form button between bot restarts
         self.add_view(LaunchQuestionSubmissionFormView())
 
@@ -40,21 +43,28 @@ bot = AmaBot()
 async def on_guild_join(guild):
     print(f"Joined new server: {guild.name}")
 
-    # Submit new server to stored server data
-    submitNewServerToJson(guild.name)
+    try:
+        # Submit new server to stored server data
+        await submitNewServerToDb(guild.id)
 
-    # Find first chat channel where bot has permission to send a message
-    for channel in guild.text_channels:
-        if channel.permissions_for(guild.me).send_messages:
-            welcomeEmbed = discord.Embed(
-                title="AMA-Bot greets you! 👋",
-                description=f"Hello, {guild.name}, I am AMA-bot, here to handle all things inquisitive.",
-                color=discord.Color.blue()
-            )
+        # Find first chat channel where bot has permission to send a message
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages:
+                welcomeEmbed = discord.Embed(
+                    title="AMA-Bot greets you! 👋",
+                    description=f"Hello, {guild.name}, I am AMA-bot, here to handle all things inquisitive.",
+                    color=discord.Color.blue()
+                )
 
-            await channel.send(embed=welcomeEmbed)
+                await channel.send(embed=welcomeEmbed)
 
-            break;
+                break;
+
+    except sqlite3.Error:
+        # Find first chat channel where bot has permission to send a message
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages:
+                await channel.send(f"Whoops! Unable to add {guild.name} into database.")
 
 @bot.event
 async def on_message(message):

@@ -1,32 +1,62 @@
 #-----------------------------------------------------------------
 # Author:  Derrick Hamilton
 # Date:    07-28-2026
-# Purpose: Defines methods to handle data from questions.json
+# Purpose: Defines methods to handle data from questions.db
 #-----------------------------------------------------------------
 
 import json
+import sqlite3
+import aiosqlite
 from datetime import date
 
-def submitNewServerToJson(serverNameString):
-    questionsData = {}
-    
-    # Define a dictionary structure using the questions.json file created by AMA-bot
-    with open("questions.json", "r") as questionsFile:
-        questionsData = json.load(questionsFile)
+DB_FILE_NAME = "questions.db"
 
-    # Iterate through the servers in questionsData to see if server already exists
-    for server in questionsData.get("servers"):
-        serverNameValue = server.get("serverName", "Unknown")
-        if serverNameString == serverNameValue:
-            print("Server already exists! Name: " + serverNameString)
-            return
+async def initializeDb():
+    async with aiosqlite.connect(DB_FILE_NAME) as db:
+        try:
+            await db.execute("""
+                PRAGMA foreign_keys = ON;
+            """)
 
-    # Submit new server info to questionsData
-    newServerData = {"serverName": serverNameString, "questions": [], "askedQuestions": []}
-    questionsData["servers"].append(newServerData)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS Servers (
+                    id VARCHAR(255) PRIMARY KEY
+                )
+            """)
 
-    with open("questions.json", "w") as newQuestionsFile:
-        json.dump(questionsData, newQuestionsFile, indent=4)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS Questions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    server_id VARCHAR(255),
+                    author VARCHAR(255) NOT NULL,
+                    question VARCHAR(280) NOT NULL,
+                    asked BOOL NOT NULL,
+                    FOREIGN KEY (server_id) REFERENCES Servers(id)
+                )
+            """)
+
+            await db.commit()
+
+        except sqlite3.Error as error:
+            print(f"SQLite error occurred: {error}")
+            await db.rollback()
+
+async def submitNewServerToDb(serverId):
+    async with aiosqlite.connect(DB_FILE_NAME) as db:
+        try:
+            # Insert new server ID into Servers table
+            await db.execute(
+                "INSERT INTO Servers (id) VALUES (?)",
+                (serverId,)
+            )
+
+            # Commit to save changes
+            await db.commit()
+
+        except sqlite3.Error as error:
+            print(f"SQLite error occurred: {error}")
+            await db.rollback()
+            raise
 
 def submitNewQuestionToJson(authorString, questionContentString, serverNameString):
     questionsData = {}

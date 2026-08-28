@@ -1,4 +1,4 @@
 .env
 discord.log
 __pycache__
-questions.json
+questions.db
