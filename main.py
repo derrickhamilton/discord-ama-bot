@@ -116,16 +116,28 @@ async def ama(ctx):
 # using the LaunchQuestionSubmissionFormView class
 @bot.command(name="submit-question")
 async def submit(ctx):
+    # Flag to check if the author of a message in the pinned messages list is AMA-bot
+    foundAmaBotMessage = False
+
+    # Get all the pinned messages from the current text channel
+    # await ctx.channel.pins() is deprecated
+    async for message in ctx.channel.pins():
+        if message.author == bot.user:
+            foundAmaBotMessage = True
+
     # Create an embed to hold a brief instruction message with the submission form launcher
     question_embed = discord.Embed(
         title="Submit a question to AMA-bot! ❓",
         description="To submit your question, click the button below to fill out the question submission form.",
         color=discord.Color.blue()
     )
-
+    
     questionFormMessage = await ctx.send(embed=question_embed, view=LaunchQuestionSubmissionFormView())
 
-    await questionFormMessage.pin()
+    # If AMA-bot's message was not found in the pinned messages list, pin it
+    if not foundAmaBotMessage:
+        await questionFormMessage.pin()
+
     
 if __name__ == "__main__":
     token = os.getenv('DISCORD_TOKEN')
