@@ -6,7 +6,7 @@
 #-----------------------------------------------------------------
 
 import discord
-from handleQuestionData import submitNewQuestionToJson
+from handleQuestionData import submitNewQuestionToDb
 
 questionFormTitleString = "Submit a question!"
 
@@ -23,7 +23,7 @@ class QuestionSubmissionForm(discord.ui.Modal, title=questionFormTitleString):
         print(f"Submission from user {interaction.user.display_name}: {self.msg_content.value}\nServer: {interaction.guild}")
 
         assert interaction.guild is not None
-        submitNewQuestionToJson(interaction.user.display_name, self.msg_content.value, interaction.guild.name)
+        await submitNewQuestionToDb(interaction.user.display_name, self.msg_content.value, interaction.guild.id)
 
         await interaction.response.send_message(f"{interaction.user.mention} - Thank you for submitting a question!")
 

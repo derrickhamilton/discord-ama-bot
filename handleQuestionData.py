@@ -4,7 +4,6 @@
 # Purpose: Defines methods to handle data from questions.db
 #-----------------------------------------------------------------
 
-import json
 import sqlite3
 import aiosqlite
 from datetime import date
@@ -29,6 +28,7 @@ async def initializeDb():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     server_id VARCHAR(255),
                     author VARCHAR(255) NOT NULL,
+                    date TEXT,
                     question VARCHAR(280) NOT NULL,
                     asked BOOL NOT NULL,
                     FOREIGN KEY (server_id) REFERENCES Servers(id)
@@ -58,50 +58,61 @@ async def submitNewServerToDb(serverId):
             await db.rollback()
             raise
 
-def submitNewQuestionToJson(authorString, questionContentString, serverNameString):
-    questionsData = {}
+async def submitNewQuestionToDb(authorString, questionContentString, serverId):
+    async with aiosqlite.connect(DB_FILE_NAME) as db:
+        try:
+            # Get today's date in yyyy-mm-dd format
+            today = date.today().isoformat()
 
-    # Define a dictionary structure using the questions.json file created by AMA-bot
-    with open("questions.json", "r") as questionsFile:
-        questionsData = json.load(questionsFile)
+            # Insert new questions into Questions table with associated serverId
+            await db.execute(
+                "INSERT INTO Questions (server_id, author, date, question, asked) VALUES (?,?,?,?,?)",
+                (serverId, authorString, today, questionContentString, 0)
+            )
 
-    # Get today's date in yyyy-mm-dd format
-    today = date.today().isoformat()
+            # Commit changes to save
+            await db.commit()
 
-    for index, server in enumerate(questionsData.get("servers")):
-        serverNameValue = server.get("serverName", "Unknown")
-        print(f"Compare to value: {serverNameString} retrieved value:{serverNameValue}")
-        if serverNameString == serverNameValue:
-            print("Found server! Name: " + serverNameString)
-            newQuestionData = {"author": authorString, "dateSubmitted": today, "questionContent": questionContentString}
-            questionsData["servers"][index]["questions"].append(newQuestionData)
-            break;
+        except sqlite3.Error as error:
+            print(f"SQLite error occurred: {error}")
+            await db.rollback()
+            raise
 
-    with open("questions.json", "w") as newQuestionsFile:
-        json.dump(questionsData, newQuestionsFile, indent=4)
+async def retrieveQuestionDataFromDb(serverId):
+    async with aiosqlite.connect(DB_FILE_NAME) as db:
+        try:
+            async with db.execute("SELECT * FROM Questions WHERE server_id = ?", (serverId,)) as cursor:
+                # Initialize tuple to store the question data
+                foundQuestion = tuple()
 
-def retrieveQuestionDataFromJson(serverNameString):
-    allQuestionsData = {}
-    questionReturn = {}
+                # Access rows one by one
+                async for row in cursor:
+                    # Check if question was asked in the server
+                    questionAsked = row[5] # Corresponds to Questions table 'asked' value
 
-    # Define a dictionary structure using the questions.json file created by AMA-bot
-    with open("questions.json", "r") as questionsFile:
-        allQuestionsData = json.load(questionsFile)
+                    if not questionAsked:
+                        foundQuestion = row
+                        break
 
-    for index, server in enumerate(allQuestionsData.get("servers")):
-        serverNameValue = server.get("serverName", "Unknown")
-        if serverNameString == serverNameValue:
+                # Return regardless of result
+                return foundQuestion
 
-            # If questions list is empty, simply return to avoid list pop error
-            if len(allQuestionsData["servers"][index]["questions"]) == 0:
-                return questionReturn
+        except sqlite3.Error as error:
+            print(f"SQLite error occurred: {error}")
+            await db.rollback()
+            raise
 
-            # Grab the first question from the questions list then append it to the askedQuestions list
-            questionReturn = allQuestionsData["servers"][index]["questions"].pop(0)
-            allQuestionsData["servers"][index]["askedQuestions"].append(questionReturn)
+async def updateQuestionAskedValueInDb(questionId):
+    async with aiosqlite.connect(DB_FILE_NAME) as db:
+        try:
+            await db.execute(
+                "UPDATE Questions SET asked = ? WHERE id = ?",
+                ("TRUE", questionId)
+            )
 
-    with open("questions.json", "w") as newQuestionsFile:
-        json.dump(allQuestionsData, newQuestionsFile, indent=4)
+            await db.commit()
 
-
-    return questionReturn
+        except sqlite3.Error as error:
+            print(f"SQLite error occurred: {error}")
+            await db.rollback()
+            raise

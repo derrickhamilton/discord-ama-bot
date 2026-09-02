@@ -13,7 +13,7 @@ import os
 import asyncio
 import sqlite3
 from questionSubmissionForm import LaunchQuestionSubmissionFormView
-from handleQuestionData import initializeDb, retrieveQuestionDataFromJson, submitNewServerToDb
+from handleQuestionData import initializeDb, retrieveQuestionDataFromDb, submitNewServerToDb, updateQuestionAskedValueInDb
 
 load_dotenv()
 
@@ -84,42 +84,53 @@ async def on_message(message):
 # Will not do anything if the user is not currently in a voice channel
 @bot.command(name="ama")
 async def ama(ctx):
-    # Attempt to retrieve a question from the json data
-    question = retrieveQuestionDataFromJson(ctx.guild.name)
+    try:
+        # Attempt to retrieve a question from the json data
+        question = await retrieveQuestionDataFromDb(ctx.guild.id)
 
-    if not question:
-        await ctx.send(f"{ctx.author.mention} - No question found! Consider submitting a question using the submit-question command.")
-    else:
-        if not ctx.author.voice:
-            await ctx.send(f"{ctx.author.mention} - {question["questionContent"]}")
+        if not question:
+            await ctx.send(f"{ctx.author.mention} - No question found! Consider submitting a question using the submit-question command.")
         else:
-            voiceChannel = ctx.author.voice.channel
+            if not ctx.author.voice:
+                await ctx.send(f"{ctx.author.mention} - {question[4]}")
 
-            # Create the questionStr to be converted to audio saying who submitted it and the question content
-            questionStr = f"{question["author"]} asked - {question["questionContent"]}"
+                # Set the question to asked in database
+                await updateQuestionAskedValueInDb(question[0])
+            else:
+                voiceChannel = ctx.author.voice.channel
 
-            # Convert questionStr to an MP3 file using gTTS
-            ttsAudio = gTTS(text=questionStr, lang="en")
-            filename = "tts_question_audio.mp3"
-            ttsAudio.save(filename)
+                # Create the questionStr to be converted to audio saying who submitted it and the question content
+                questionStr = f"{question[2]} asked - {question[4]}"
 
-            # Join voice channel
-            vc = await voiceChannel.connect()
+                # Convert questionStr to an MP3 file using gTTS
+                ttsAudio = gTTS(text=questionStr, lang="en")
+                filename = "tts_question_audio.mp3"
+                ttsAudio.save(filename)
 
-            # Play audio using ffmpeg
-            vc.play(discord.FFmpegPCMAudio(source=filename))
+                # Join voice channel
+                vc = await voiceChannel.connect()
 
-            # Wait for audio clip to finish
-            while vc.is_playing():
-                await asyncio.sleep(1)
+                # Play audio using ffmpeg
+                vc.play(discord.FFmpegPCMAudio(source=filename))
 
-            # Disconnect and cleanup
-            await vc.disconnect()
-            if os.path.exists(filename):
-                os.remove(filename)
+                # Wait for audio clip to finish
+                while vc.is_playing():
+                    await asyncio.sleep(1)
 
-            # Still output question to text channel after disconnecting from voice
-            await ctx.send(f"{ctx.author.mention} - {question["questionContent"]}")
+                # Disconnect and cleanup
+                await vc.disconnect()
+                if os.path.exists(filename):
+                    os.remove(filename)
+
+                # Still output question to text channel after disconnecting from voice
+                await ctx.send(f"{ctx.author.mention} - {question[4]}")
+
+                # Set the question to asked in database
+                await updateQuestionAskedValueInDb(question[0])
+
+
+    except sqlite3.Error:
+        await ctx.send(f"{ctx.author.mention} - Sorry, there was a problem accessing the questions database.")
 
 # Command: !submit-question
 # Sends a message containing a button to launch the QuestionSubmissionForm modal 
